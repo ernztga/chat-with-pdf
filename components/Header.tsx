@@ -11,7 +11,7 @@ function Header() {
       <Link href="/dashboard" className="text-2xl">
         Chat to <span className="text-indigo-600">PDF</span>
       </Link>
-      
+
       <Show when="signed-in">
         <div className="flex items-center space-x-2">
           <Button asChild variant="link" className="hidden md:flex">
