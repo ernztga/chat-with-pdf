@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { JSX, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import {
   CheckCircleIcon,
@@ -10,7 +10,7 @@ import {
   RocketIcon,
   SaveIcon,
 } from "lucide-react";
-import useUpload from "@/hooks/useUpload";
+import useUpload, { StatusText } from "@/hooks/useUpload";
 import { useRouter } from "next/navigation";
 
 function FileUploader() {
@@ -33,6 +33,15 @@ function FileUploader() {
     }
   }, []);
 
+  const statusIcons: {
+    [key in StatusText]: JSX.Element;
+  } = {
+    [StatusText.UPLOADING]: <RocketIcon className="h-20 w-20 text-indigo-600" />,
+    [StatusText.UPLOADED]: <CheckCircleIcon className="h-20 w-20 text-indigo-600" />,
+    [StatusText.SAVING]: <SaveIcon className="h-20 w-20 text-indigo-600" />,
+    [StatusText.GENERATING]: <HammerIcon className="h-20 w-20 text-indigo-600 animate-bounce" />,
+  }
+
   const { getRootProps, getInputProps, isDragActive, isFocused, isDragAccept } =
     useDropzone({
       onDrop,
@@ -52,17 +61,27 @@ function FileUploader() {
           <div
             className={`radial-progress bg-indigo-300 text-white border-indigo-600 border-4 ${progress === 100 && "hidden"}`}
             role="progressbar"
+            style={{
+              // @ts-expect-error to follow daisy ui
+              "--value": progress,
+              "--size": "12rem",
+              "--thickness": "1.3rem",
+            }}
           >
             {progress} %
           </div>
 
           {/* Render Status Icon */}
+          {
+            // @ts-expect-error type check
+            statusIcons[status!] 
+          }
 
           <p>{typeof status === "string" ? status : ""}</p>
         </div>
       )}
 
-      <div
+      {!uploadInProgress && (<div
         {...getRootProps()}
         className={`p-10 border-2 mt-10 border-dashed border-indigo-600 text-indigo-600 w-[90%] rounded-lg h-96 flex items-center text-center justify-center ${isFocused || isDragAccept ? "bg-indigo-300" : "bg-indigo-100"}`}
       >
@@ -82,7 +101,7 @@ function FileUploader() {
             </>
           )}
         </div>
-      </div>
+      </div>)}
     </div>
   );
 }
