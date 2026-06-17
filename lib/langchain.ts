@@ -1,0 +1,147 @@
+import { ChatOpenAI } from "@langchain/openai";
+import { OpenAIEmbeddings, NVIDIAEmbeddings } from "@langchain/openai";
+
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { HumanMessage, AIMessage } from "@langchain/core/messages";
+
+import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
+import { createRetrievalChain } from "langchain/chains/retrieval";
+import { createHistoryAwareRetriever } from "langchain/chains/history_aware_retriever";
+
+import { PineconeStore } from "@langchain/pinecone";
+import { PineconeConflictError } from "@pinecone-database/pinecone/dist/errors";
+import { Index, RecordMetadata } from "@pinecone-database/pinecone";
+import { adminDb } from "../firebaseAdmin";
+import { auth } from "@clerk/nextjs/server";
+import pineconeClient from "./pinecone";
+
+export const indexName = "ernztg";
+
+export async function generateDocs(docId: string) {
+  const { userId } = await auth();
+
+  if (!userId) throw new Error("User not found");
+
+  console.log("--- Fetching the download URL from Firebase... ---");
+
+  const firebaseRef = await adminDb
+    .collection("users")
+    .doc(userId)
+    .collection("files")
+    .doc(docId)
+    .get();
+
+  const downloadUrl = firebaseRef.data()?.downloadUrl;
+
+  if (!downloadUrl) throw new Error("Download URL not found");
+
+  console.log(`--- Download URL fetched successfully: ${downloadUrl} ---`);
+
+  // Fetch the PDF from the specified URL
+  const response = await fetch(downloadUrl);
+
+  // Load the PDF into a PDFDocument object
+  const data = await response.blob();
+
+  // Load the PDF document from the specified path
+  console.log("--- Loading PDF document... ---");
+  const loader = new PDFLoader(data);
+  const docs = await loader.load();
+
+  // Split the document into smaller parts for easier processing
+  console.log("--- Splitting the document into smaller parts... ---");
+  const splitter = new RecursiveCharacterTextSplitter();
+
+  const splitDocs = await splitter.splitDocuments(docs);
+  console.log(`--- Split into ${splitDocs.length} parts ---`);
+
+  return splitDocs;
+}
+
+async function namespaceExists(
+  index: Index<RecordMetadata>,
+  namespace: string,
+) {
+  if (namespace === null) throw new Error("No namespace value provided.");
+
+  const { namespaces } = await index.describeIndexStats();
+  return namespaces?.[namespace] != undefined;
+}
+
+export async function generateEmbeddingsInPineconeVectorStore(docId: string) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    throw new Error("User not found");
+  }
+
+  let pineconeVectorStore;
+
+  console.log("--- Generating Embeddings... ---");
+
+  // NVIDIA-EMBED-V1 EMBED MODEL
+  const embeddings = new OpenAIEmbeddings({
+    apiKey: process.env.NVIDIA_API_KEY,
+    model: "nvidia/nv-embed-v1",
+    configuration: {
+      baseURL: "https://integrate.api.nvidia.com/v1",
+    },
+  });
+
+  const index = pineconeClient.index({
+    name: indexName,
+  });
+
+  const namespaceAlreadyExists = await namespaceExists(index, docId);
+
+  if (namespaceAlreadyExists) {
+    console.log(
+      `--- Namespace ${docId} already exists, reusing existing embeddings... ---`,
+    );
+
+    pineconeVectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+      pineconeIndex: index,
+      namespace: docId,
+    });
+
+    return pineconeVectorStore;
+  } else {
+    // If the namespace does not exist, download the PDF from firestore via the stored download URL and generate the embeddings and store them in the Pinecone vector store
+
+    const splitDocs = await generateDocs(docId);
+
+    console.log(`
+      --- Storing the embeddings in namespace ${docId} in the ${indexName} Pinecone vector store... --- 
+    `);
+
+    const texts = splitDocs.map((d) => d.pageContent);
+    const vectors = await embeddings.embedDocuments(texts);
+
+    if (!vectors.length) {
+      throw new Error("No embeddings generated");
+    }
+
+    // Convert to Pinecone format
+    const records = vectors.map((values, i) => ({
+      id: `${docId}-${i}`,
+      values,
+      metadata: {
+        text: splitDocs[i].pageContent,
+      },
+    }));
+
+    await index.namespace(docId).upsert({
+      records,
+    });
+
+    pineconeVectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+      pineconeIndex: index,
+      namespace: docId,
+    });
+
+    return pineconeVectorStore;
+  }
+}
