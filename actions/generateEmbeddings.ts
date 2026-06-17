@@ -11,7 +11,7 @@ export async function generateEmbeddings(docId: string) {
     throw new Error("Unauthorized");
   }
 
-  // Turn a PDF into embeddings
+  // Turn PDF into embeddings
   await generateEmbeddingsInPineconeVectorStore(docId);
 
   revalidatePath("/dashboard");

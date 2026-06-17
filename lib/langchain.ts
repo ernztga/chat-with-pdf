@@ -1,5 +1,5 @@
 import { ChatOpenAI } from "@langchain/openai";
-import { OpenAIEmbeddings } from "@langchain/openai";
+import { OpenAIEmbeddings, NVIDIAEmbeddings } from "@langchain/openai";
 
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
@@ -17,11 +17,6 @@ import { Index, RecordMetadata } from "@pinecone-database/pinecone";
 import { adminDb } from "../firebaseAdmin";
 import { auth } from "@clerk/nextjs/server";
 import pineconeClient from "./pinecone";
-
-const model = new ChatOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  modelName: "gpt-4o",
-});
 
 export const indexName = "ernztg";
 
@@ -86,9 +81,20 @@ export async function generateEmbeddingsInPineconeVectorStore(docId: string) {
   let pineconeVectorStore;
 
   console.log("--- Generating Embeddings... ---");
-  const embeddings = new OpenAIEmbeddings();
 
-  const index = pineconeClient.index(indexName);
+  // NVIDIA-EMBED-V1 EMBED MODEL
+  const embeddings = new OpenAIEmbeddings({
+    apiKey: process.env.NVIDIA_API_KEY,
+    model: "nvidia/nv-embed-v1",
+    configuration: {
+      baseURL: "https://integrate.api.nvidia.com/v1",
+    },
+  });
+
+  const index = pineconeClient.index({
+    name: indexName,
+  });
+
   const namespaceAlreadyExists = await namespaceExists(index, docId);
 
   if (namespaceAlreadyExists) {
@@ -111,14 +117,30 @@ export async function generateEmbeddingsInPineconeVectorStore(docId: string) {
       --- Storing the embeddings in namespace ${docId} in the ${indexName} Pinecone vector store... --- 
     `);
 
-    pineconeVectorStore = await PineconeStore.fromDocuments(
-      splitDocs,
-      embeddings,
-      {
-        pineconeIndex: index,
-        namespace: docId,
+    const texts = splitDocs.map((d) => d.pageContent);
+    const vectors = await embeddings.embedDocuments(texts);
+
+    if (!vectors.length) {
+      throw new Error("No embeddings generated");
+    }
+
+    // Convert to Pinecone format
+    const records = vectors.map((values, i) => ({
+      id: `${docId}-${i}`,
+      values,
+      metadata: {
+        text: splitDocs[i].pageContent,
       },
-    );
+    }));
+
+    await index.namespace(docId).upsert({
+      records,
+    });
+
+    pineconeVectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+      pineconeIndex: index,
+      namespace: docId,
+    });
 
     return pineconeVectorStore;
   }
