@@ -9,6 +9,7 @@ import { useUser } from "@clerk/nextjs";
 import { collection, orderBy, query } from "firebase/firestore";
 import { db } from "@/firebase";
 import { askQuestion } from "@/actions/askQuestion";
+import ChatMessage from "./ChatMessage";
 
 export type Message = {
   id?: string;
@@ -23,6 +24,7 @@ function Chat({ id }: { id: string }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isPending, startTransition] = useTransition();
+  const bottomOfChatRef = useRef<HTMLDivElement>(null);
 
   // snapshot: realtime listener
   const [snapshot, loading, error] = useCollection(
@@ -56,6 +58,13 @@ function Chat({ id }: { id: string }) {
     });
   };
 
+  // scroll to bottom of chat for every new message
+  useEffect(() => {
+    bottomOfChatRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages]);
+
   useEffect(() => {
     if (!snapshot) return;
 
@@ -84,21 +93,41 @@ function Chat({ id }: { id: string }) {
   }, [snapshot]);
 
   return (
-    <div className="flex flex-col h-full overflow-scroll">
+    <div className="flex flex-col h-full overflow-auto">
       {/* Chat contents */}
       <div className="flex-1 w-full">
-        {messages.map((message) => (
-          <div key={message.id}>
-            <p>{message.message}</p>
+        {loading ? (
+          <div className="flex items-center justify-center">
+            <Loader2Icon className="animate-spin h-20 w-20 text-indigo-600 mt-20" />
           </div>
-        ))}
+        ) : (
+          <div className='p-5'>
+            {messages.length === 0 && (
+              <ChatMessage
+                key={"placeholder"}
+                message={{
+                  role: "ai",
+                  message: "Ask me anything about the document",
+                  createdAt: new Date(),
+                }}
+              />
+            )}
+
+            {messages.map((message, index) => (
+              <ChatMessage key={index} message={message} />
+            ))}
+
+            <div ref={bottomOfChatRef} />
+          </div>
+        )}
       </div>
 
       <form
         onSubmit={handleSubmit}
-        className="flex sticky bottom-10 space-x-2 p-5 bg-indigo-600/75"
+        className="flex sticky bottom-0 space-x-2 p-5 bg-indigo-600/75"
       >
         <Input
+          className='bg-white'
           placeholder="Ask a Question..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
