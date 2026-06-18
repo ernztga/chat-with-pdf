@@ -16,6 +16,7 @@
     "@langchain/pinecone": "^1.0.3",
     "@pinecone-database/pinecone": "^7.2.0",
     "@react-pdf/renderer": "^4.5.1",
+    "byte-size": "^9.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.14.0",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/byte-size": "^8.1.2",
     "@types/node": "^25",
     "@types/react": "^19",
     "@types/react-dom": "^19",

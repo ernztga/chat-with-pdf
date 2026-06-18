@@ -23,24 +23,33 @@ function FileUploader() {
     }
   }, [fileId, router]);
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    // Do something with the files
-    const file = acceptedFiles[0];
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      // Do something with the files
+      const file = acceptedFiles[0];
 
-    if (file) {
-      await handleUpload(file);
-    } else {
-    }
-  }, []);
+      if (file) {
+        await handleUpload(file);
+      } else {
+      }
+    },
+    [handleUpload],
+  );
 
   const statusIcons: {
     [key in StatusText]: JSX.Element;
   } = {
-    [StatusText.UPLOADING]: <RocketIcon className="h-20 w-20 text-indigo-600" />,
-    [StatusText.UPLOADED]: <CheckCircleIcon className="h-20 w-20 text-indigo-600" />,
+    [StatusText.UPLOADING]: (
+      <RocketIcon className="h-20 w-20 text-indigo-600" />
+    ),
+    [StatusText.UPLOADED]: (
+      <CheckCircleIcon className="h-20 w-20 text-indigo-600" />
+    ),
     [StatusText.SAVING]: <SaveIcon className="h-20 w-20 text-indigo-600" />,
-    [StatusText.GENERATING]: <HammerIcon className="h-20 w-20 text-indigo-600 animate-bounce" />,
-  }
+    [StatusText.GENERATING]: (
+      <HammerIcon className="h-20 w-20 text-indigo-600 animate-bounce" />
+    ),
+  };
 
   const { getRootProps, getInputProps, isDragActive, isFocused, isDragAccept } =
     useDropzone({
@@ -74,34 +83,36 @@ function FileUploader() {
           {/* Render Status Icon */}
           {
             // @ts-expect-error type check
-            statusIcons[status!] 
+            statusIcons[status!]
           }
 
           <p>{typeof status === "string" ? status : ""}</p>
         </div>
       )}
 
-      {!uploadInProgress && (<div
-        {...getRootProps()}
-        className={`p-10 border-2 mt-10 border-dashed border-indigo-600 text-indigo-600 w-[90%] rounded-lg h-96 flex items-center text-center justify-center ${isFocused || isDragAccept ? "bg-indigo-300" : "bg-indigo-100"}`}
-      >
-        <input {...getInputProps()} />
+      {!uploadInProgress && (
+        <div
+          {...getRootProps()}
+          className={`p-10 border-2 mt-10 border-dashed border-indigo-600 text-indigo-600 w-[90%] rounded-lg h-96 flex items-center text-center justify-center ${isFocused || isDragAccept ? "bg-indigo-300" : "bg-indigo-100"}`}
+        >
+          <input {...getInputProps()} />
 
-        <div className="flex flex-col items-center justify-center">
-          {isDragActive ? (
-            <>
-              <RocketIcon className="h-20 w-20 mb-5 animate-ping" />
+          <div className="flex flex-col items-center justify-center">
+            {isDragActive ? (
+              <>
+                <RocketIcon className="h-20 w-20 mb-5 animate-ping" />
 
-              <p>Drop the files here ...</p>
-            </>
-          ) : (
-            <>
-              <CircleArrowDown className="h-20 w-20 mb-5 animate-bounce" />
-              <p>Drag 'n' drop some files here, or click to select files</p>
-            </>
-          )}
+                <p>Drop the files here ...</p>
+              </>
+            ) : (
+              <>
+                <CircleArrowDown className="h-20 w-20 mb-5 animate-bounce" />
+                <p>Drag 'n' drop some files here, or click to select files</p>
+              </>
+            )}
+          </div>
         </div>
-      </div>)}
+      )}
     </div>
   );
 }
