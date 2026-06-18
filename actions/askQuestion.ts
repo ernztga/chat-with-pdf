@@ -22,9 +22,6 @@ export async function askQuestion(id: string, question: string) {
 
   // check how many user messages are in the chat
   const chatSnapshot = await chatRef.get();
-  const userMessages = chatSnapshot.docs.filter(
-    (doc) => doc.data().role === "human",
-  );
 
   const userMessage: Message = {
     role: "human",

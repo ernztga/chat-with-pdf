@@ -9,8 +9,6 @@ import { useUser } from "@clerk/nextjs";
 import { collection, orderBy, query } from "firebase/firestore";
 import { db } from "@/firebase";
 import { askQuestion } from "@/actions/askQuestion";
-// import { askQuestion, Message } from "@actions/askQuestion";
-// import { chatMessage } from "./ChatMessage";
 
 export type Message = {
   id?: string;
@@ -40,21 +38,6 @@ function Chat({ id }: { id: string }) {
 
     const q = input;
     setInput("");
-
-    // // Optimistic UI update
-    // setMessages((prev: any) => [
-    //   ...prev,
-    //   {
-    //     role: "human",
-    //     message: q,
-    //     createdAt: new Date(),
-    //   },
-    //   {
-    //     role: "ai",
-    //     message: "Thinking...",
-    //     createdAt: new Date(),
-    //   },
-    // ]);
 
     startTransition(async () => {
       const { success, message } = await askQuestion(id, q);

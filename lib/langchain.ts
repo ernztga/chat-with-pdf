@@ -17,7 +17,7 @@ import { adminDb } from "../firebaseAdmin";
 import { indexName, embeddingModel, textModel } from "@/configs/langchain";
 import pineconeClient from "./pinecone";
 
-// Initialize OpenAI model with API key and model name
+// Initialize OpenAI text model
 const model = new ChatOpenAI(textModel);
 
 async function fetchMessagesFromDB(docId: string) {
@@ -114,6 +114,7 @@ export async function generateEmbeddingsInPineconeVectorStore(docId: string) {
 
   console.log("--- Generating Embeddings... ---");
 
+  // Use Nvidia embedding model
   const embeddings = new OpenAIEmbeddings(embeddingModel);
 
   const index = pineconeClient.index({
@@ -186,13 +187,13 @@ async function generateLangchainCompletion(docId: string, question: string) {
   // Fetch database messages
   const chatHistory = await fetchMessagesFromDB(docId);
 
-  console.log("--- Retrieving relevant documents ---");
+  console.log("--- Retrieving relevant documents... ---");
 
   const relevantDocs = await retriever.invoke(question);
 
   const context = relevantDocs.map((doc) => doc.pageContent).join("\n\n");
 
-  console.log("--- Building prompt ---");
+  console.log("--- Building prompt... ---");
 
   const prompt = ChatPromptTemplate.fromMessages([
     [
@@ -209,7 +210,7 @@ async function generateLangchainCompletion(docId: string, question: string) {
     ["human", "{input}"],
   ]);
 
-  console.log("--- Creating chain ---");
+  console.log("--- Creating chain... ---");
 
   const chain = RunnableSequence.from([
     prompt,
@@ -217,7 +218,7 @@ async function generateLangchainCompletion(docId: string, question: string) {
     new StringOutputParser(),
   ]);
 
-  console.log("--- Generating response ---");
+  console.log("--- Generating response... ---");
 
   const answer = await chain.invoke({
     context,
