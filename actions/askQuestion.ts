@@ -2,6 +2,7 @@
 
 import { Message } from "@/components/Chat";
 import { adminDb } from "@/firebaseAdmin";
+import { generateLangchainCompletion } from "@/lib/langchain";
 import { auth } from "@clerk/nextjs/server";
 // import { generateLangchainCompletion } from '@/lib/langchain'
 
@@ -21,9 +22,6 @@ export async function askQuestion(id: string, question: string) {
 
   // check how many user messages are in the chat
   const chatSnapshot = await chatRef.get();
-  const userMessages = chatSnapshot.docs.filter(
-    (doc) => doc.data().role === "human",
-  );
 
   const userMessage: Message = {
     role: "human",
@@ -33,16 +31,16 @@ export async function askQuestion(id: string, question: string) {
 
   await chatRef.add(userMessage);
 
-  // TODO
-  // const reply = await generateLangchainCompletion(id, question);
+  // Generate AI Response
+  const reply = await generateLangchainCompletion(id, question);
 
-  // const aiMessage: Message = {
-  //   role: "ai",
-  //   message: reply,
-  //   createdAt: new Date(),
-  // // };
+  const aiMessage: Message = {
+    role: "ai",
+    message: reply,
+    createdAt: new Date(),
+  };
 
-  // await chatRef.add(aiMessage);
+  await chatRef.add(aiMessage);
 
   return { success: true, message: null };
 }

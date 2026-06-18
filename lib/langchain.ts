@@ -1,24 +1,56 @@
-import { ChatOpenAI } from "@langchain/openai";
-import { OpenAIEmbeddings } from "@langchain/openai";
-
+// LangChain
 import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+import { HumanMessage, AIMessage } from "@langchain/core/messages";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+} from "@langchain/core/prompts";
+import { RunnableSequence } from "@langchain/core/runnables";
+import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
+import { PineconeStore } from "@langchain/pinecone";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
-import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { HumanMessage, AIMessage } from "@langchain/core/messages";
-
-import { createStuffDocumentsChain } from "langchain/chains/combine_documents";
-import { createRetrievalChain } from "langchain/chains/retrieval";
-import { createHistoryAwareRetriever } from "langchain/chains/history_aware_retriever";
-
-import { PineconeStore } from "@langchain/pinecone";
-import { PineconeConflictError } from "@pinecone-database/pinecone/dist/errors";
 import { Index, RecordMetadata } from "@pinecone-database/pinecone";
-import { adminDb } from "../firebaseAdmin";
 import { auth } from "@clerk/nextjs/server";
+import { adminDb } from "../firebaseAdmin";
+import { indexName, embeddingModel, textModel } from "@/configs/langchain";
 import pineconeClient from "./pinecone";
 
-export const indexName = "ernztg";
+// Initialize OpenAI text model
+const model = new ChatOpenAI(textModel);
+
+async function fetchMessagesFromDB(docId: string) {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error("User not found");
+  }
+
+  console.log("--- Fetching chat history from the firestore database... ---");
+
+  // Get the last n messages from the caht history
+  const chats = await adminDb
+    .collection("users")
+    .doc(userId)
+    .collection("files")
+    .doc(docId)
+    .collection("chat")
+    .orderBy("createdAt", "desc")
+    // .limit(LIMIT) -> optional limit
+    .get();
+
+  const chatHistory = chats.docs.map((doc) => {
+    return doc.data().role === "human"
+      ? new HumanMessage(doc.data().message)
+      : new AIMessage(doc.data().message);
+  });
+
+  console.log(
+    `--- Fetched last ${chatHistory.length} messages successfully ---`,
+  );
+
+  return chatHistory;
+}
 
 export async function generateDocs(docId: string) {
   const { userId } = await auth();
@@ -82,14 +114,8 @@ export async function generateEmbeddingsInPineconeVectorStore(docId: string) {
 
   console.log("--- Generating Embeddings... ---");
 
-  // NVIDIA-EMBED-V1 EMBED MODEL
-  const embeddings = new OpenAIEmbeddings({
-    apiKey: process.env.NVIDIA_API_KEY,
-    model: "nvidia/nv-embed-v1",
-    configuration: {
-      baseURL: "https://integrate.api.nvidia.com/v1",
-    },
-  });
+  // Use Nvidia embedding model
+  const embeddings = new OpenAIEmbeddings(embeddingModel);
 
   const index = pineconeClient.index({
     name: indexName,
@@ -145,3 +171,64 @@ export async function generateEmbeddingsInPineconeVectorStore(docId: string) {
     return pineconeVectorStore;
   }
 }
+
+async function generateLangchainCompletion(docId: string, question: string) {
+  let pineconeVectorStore;
+
+  pineconeVectorStore = await generateEmbeddingsInPineconeVectorStore(docId);
+  if (!pineconeVectorStore) {
+    throw new Error("Pinecone vector store not found");
+  }
+
+  // Create a retriever to search through the vector store
+  console.log("--- Creating a retriever... ---");
+  const retriever = pineconeVectorStore.asRetriever();
+
+  // Fetch database messages
+  const chatHistory = await fetchMessagesFromDB(docId);
+
+  console.log("--- Retrieving relevant documents... ---");
+
+  const relevantDocs = await retriever.invoke(question);
+
+  const context = relevantDocs.map((doc) => doc.pageContent).join("\n\n");
+
+  console.log("--- Building prompt... ---");
+
+  const prompt = ChatPromptTemplate.fromMessages([
+    [
+      "system",
+      `You are a helpful assistant. Answer the user's question ONLY using the provided context.
+
+      Context:
+      {context}
+      `,
+    ],
+
+    new MessagesPlaceholder("chat_history"),
+
+    ["human", "{input}"],
+  ]);
+
+  console.log("--- Creating chain... ---");
+
+  const chain = RunnableSequence.from([
+    prompt,
+    model,
+    new StringOutputParser(),
+  ]);
+
+  console.log("--- Generating response... ---");
+
+  const answer = await chain.invoke({
+    context,
+    chat_history: chatHistory,
+    input: question,
+  });
+
+  console.log(answer);
+
+  return answer;
+}
+
+export { model, generateLangchainCompletion };

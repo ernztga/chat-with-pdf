@@ -9,8 +9,6 @@ import { useUser } from "@clerk/nextjs";
 import { collection, orderBy, query } from "firebase/firestore";
 import { db } from "@/firebase";
 import { askQuestion } from "@/actions/askQuestion";
-// import { askQuestion, Message } from "@actions/askQuestion";
-// import { chatMessage } from "./ChatMessage";
 
 export type Message = {
   id?: string;
@@ -41,21 +39,6 @@ function Chat({ id }: { id: string }) {
     const q = input;
     setInput("");
 
-    // Optimistic UI update
-    setMessages((prev: any) => [
-      ...prev,
-      {
-        role: "human",
-        message: q,
-        createdAt: new Date(),
-      },
-      {
-        role: "ai",
-        message: "Thinking...",
-        createdAt: new Date(),
-      },
-    ]);
-
     startTransition(async () => {
       const { success, message } = await askQuestion(id, q);
 
@@ -77,16 +60,43 @@ function Chat({ id }: { id: string }) {
     if (!snapshot) return;
 
     console.log("Updated snapshot", snapshot.docs);
+
+    // get second last message to check if the AI is thinking
+    const lastMessage = messages.pop();
+
+    if (lastMessage?.role === "ai" && lastMessage.message === "Thinking...") {
+      // return as this is a dummy placeholder message
+      return;
+    }
+
+    const newMessages = snapshot.docs.map((doc) => {
+      const { role, message, createdAt } = doc.data();
+
+      return {
+        id: doc.id,
+        role,
+        message,
+        createdAt: createdAt.toDate(),
+      };
+    });
+
+    setMessages(newMessages);
   }, [snapshot]);
 
   return (
     <div className="flex flex-col h-full overflow-scroll">
       {/* Chat contents */}
-      <div className="flex-1 w-full">{/* Chat messages */}</div>
+      <div className="flex-1 w-full">
+        {messages.map((message) => (
+          <div key={message.id}>
+            <p>{message.message}</p>
+          </div>
+        ))}
+      </div>
 
       <form
         onSubmit={handleSubmit}
-        className="flex sticky bottom-0 space-x-2 p-5 bg-indigo-600/75"
+        className="flex sticky bottom-10 space-x-2 p-5 bg-indigo-600/75"
       >
         <Input
           placeholder="Ask a Question..."
