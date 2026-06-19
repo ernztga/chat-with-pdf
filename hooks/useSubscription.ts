@@ -10,7 +10,7 @@ const PRO_LIMIT = 20;
 const FREE_LIMIT = 2;
 
 function useSubscription() {
-  const [hasActiveMemberShip, setHasActiveMemberShip] = useState(null);
+  const [hasActiveMembership, setHasActiveMembership] = useState(null);
   const [isOverFileLimit, setIsOverFileLimit] = useState(false);
   const { user } = useUser();
 
@@ -33,14 +33,14 @@ function useSubscription() {
     const data = snapshot.data();
 
     if (!data) return;
-    setHasActiveMemberShip(data.activeMembership);
+    setHasActiveMembership(data.activeMembership);
   }, [snapshot]);
 
   useEffect(() => {
-    if (!filesSnapshot || hasActiveMemberShip === null) return;
+    if (!filesSnapshot || hasActiveMembership === null) return;
 
     const files = filesSnapshot.docs;
-    const usersLimit = hasActiveMemberShip ? PRO_LIMIT : FREE_LIMIT;
+    const usersLimit = hasActiveMembership ? PRO_LIMIT : FREE_LIMIT;
 
     console.log(
       "Checking if user is over file limit",
@@ -49,10 +49,10 @@ function useSubscription() {
     );
 
     setIsOverFileLimit(files.length >= usersLimit);
-  }, [filesSnapshot, hasActiveMemberShip, PRO_LIMIT, FREE_LIMIT]);
+  }, [filesSnapshot, hasActiveMembership, PRO_LIMIT, FREE_LIMIT]);
 
   return {
-    hasActiveMemberShip,
+    hasActiveMembership,
     loading,
     error,
     isOverFileLimit,
