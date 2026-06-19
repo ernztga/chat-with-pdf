@@ -2,10 +2,13 @@
 
 import { Button } from "@/components/ui/button";
 import useSubscription from "@/hooks/useSubscription";
+// import getStripe from "@/lib/stripe-js";
 import { useUser } from "@clerk/nextjs";
 import { CheckIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import getStripe from "@/lib/stripe-js";
+import { createCheckoutSession } from "@/actions/createCheckoutSession";
 
 export type UserDetails = {
   email: string;
@@ -27,8 +30,16 @@ function PricingPage() {
     };
 
     startTransition(async () => {
-      
-    })
+      const stripe = await getStripe();
+
+      if (hasActiveMembership) {
+        // create stripe portal
+      }
+
+      const stripeSession = await createCheckoutSession(userDetails);
+
+      window.location.href = stripeSession.url!;
+    });
   };
 
   return (
