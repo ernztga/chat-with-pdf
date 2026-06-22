@@ -26,7 +26,7 @@ function Document({
   return (
     <div className="flex flex-col w-64 h-80 rounded-xl bg-white drop-shadow-md justify-between p-4 transition-all transform hover:scale-105 hover:bg-indigo-600 hover:text-white cursor-pointer group">
       <div
-        className="flex-1"
+        className="flex-1 hover:transfor,"
         onClick={() => {
           router.push(`/dashboard/files/${id}`);
         }}
@@ -40,6 +40,7 @@ function Document({
       {/* Actions */}
       <div className="flex space-x-2 justify-end">
         <Button
+          className="cursor-pointer transition duration-200 ease-in-out hover:scale-105"
           variant="outline"
           disabled={isDeleting || !hasActiveMembership}
           onClick={() => {
@@ -56,10 +57,16 @@ function Document({
           }}
         >
           <Trash2Icon className="h-6 w-6 text-red-500" />
-          {!hasActiveMembership && <span className="text-red-500 ml-2">PRO Feature</span>}
+          {!hasActiveMembership && (
+            <span className="text-red-500 ml-2">PRO Feature</span>
+          )}
         </Button>
 
-        <Button variant="outline" asChild>
+        <Button
+          variant="outline"
+          asChild
+          className="transition duration-200 ease-in-out hover:scale-105"
+        >
           <a href={downloadUrl} download>
             <DownloadCloud className="h-6 w-6 text-indigo-600" />
           </a>
