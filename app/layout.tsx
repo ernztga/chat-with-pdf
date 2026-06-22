@@ -1,3 +1,4 @@
+import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
 import {
   ClerkProvider,
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body
         className={`${inter.className} antialiased min-h-screen h-screen overflow-hidden flex flex-col`}
       >
+        <Toaster />
         <ClerkProvider>
           <header className="flex justify-end items-center p-4 gap-4 h-16">
             <Show when="signed-out">
