@@ -10,6 +10,7 @@ import { collection, orderBy, query } from "firebase/firestore";
 import { db } from "@/firebase";
 import { askQuestion } from "@/actions/askQuestion";
 import ChatMessage from "./ChatMessage";
+import { toast } from "sonner";
 
 export type Message = {
   id?: string;
@@ -45,6 +46,10 @@ function Chat({ id }: { id: string }) {
       const { success, message } = await askQuestion(id, q);
 
       if (!success) {
+        toast.error("Error", {
+          description: message,
+        });
+
         setMessages((prev) =>
           prev.slice(0, prev.length - 1).concat([
             {
@@ -101,7 +106,7 @@ function Chat({ id }: { id: string }) {
             <Loader2Icon className="animate-spin h-20 w-20 text-indigo-600 mt-20" />
           </div>
         ) : (
-          <div className='p-5'>
+          <div className="p-5">
             {messages.length === 0 && (
               <ChatMessage
                 key={"placeholder"}
@@ -127,7 +132,7 @@ function Chat({ id }: { id: string }) {
         className="flex sticky bottom-0 space-x-2 p-5 bg-indigo-600/75"
       >
         <Input
-          className='bg-white'
+          className="bg-white"
           placeholder="Ask a Question..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
