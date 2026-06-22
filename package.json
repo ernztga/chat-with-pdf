@@ -16,6 +16,7 @@
     "@langchain/pinecone": "^1.0.3",
     "@pinecone-database/pinecone": "^7.2.0",
     "@react-pdf/renderer": "^4.5.1",
+    "@stripe/cli": "^1.42.14",
     "@stripe/stripe-js": "^9.8.0",
     "byte-size": "^9.0.1",
     "class-variance-authority": "^0.7.1",
