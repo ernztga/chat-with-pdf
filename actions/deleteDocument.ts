@@ -1,6 +1,5 @@
 "use server";
 
-import { indexName } from "@/configs/langchain";
 import { adminDb, adminStorage } from "@/firebaseAdmin";
 import pineconeClient from "@/lib/pinecone";
 import { auth } from "@clerk/nextjs/server";
@@ -26,7 +25,7 @@ export async function deleteDocument(docId: string) {
 
   // Delete all embeddings associated with the document
   const index = pineconeClient.index({
-    name: indexName,
+    name: process.env.PINECONE_INDEX_NAME!,
   });
   await index.namespace(docId).deleteAll();
 

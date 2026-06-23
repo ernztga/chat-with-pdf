@@ -15,5 +15,3 @@ export const textModel = {
   apiKey: process.env.NVIDIA_TEXT_MODEL_API_KEY!,
   model: "openai/gpt-oss-120b",
 };
-
-export const indexName = "ernztg";
