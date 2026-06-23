@@ -232,6 +232,7 @@ OpenAI Response
 * Vector Databases
 * AI Application Development
 * SaaS Architecture
+* Custom webhooks for updating user state in database from stripe integrations
 * Authentication & Authorization
 * Subscription Billing
 * Serverless Web Applications
