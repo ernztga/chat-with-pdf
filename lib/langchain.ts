@@ -14,11 +14,12 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { Index, RecordMetadata } from "@pinecone-database/pinecone";
 import { auth } from "@clerk/nextjs/server";
 import { adminDb } from "../firebaseAdmin";
-import { indexName, embeddingModel, textModel } from "@/configs/langchain";
+import { embeddingModel, textModel } from "@/configs/langchain";
 import pineconeClient from "./pinecone";
 
 // Initialize OpenAI text model
 const model = new ChatOpenAI(textModel);
+const indexName = process.env.PINECONE_INDEX_NAME!
 
 async function fetchMessagesFromDB(docId: string) {
   const { userId } = await auth();
